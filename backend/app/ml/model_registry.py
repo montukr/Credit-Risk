@@ -1,11 +1,11 @@
 from datetime import datetime
 from app.core.db import get_db
 
-def _col():
+def model_versions_col():
     return get_db()["model_versions"]
 
 def register_model_version(username: str, version: int, metrics: dict, is_active: bool = True):
-    col = _col()
+    col = model_versions_col()
     if is_active:
         col.update_many({"username": username}, {"$set": {"is_active": False}})
     col.insert_one(
@@ -20,9 +20,10 @@ def register_model_version(username: str, version: int, metrics: dict, is_active
         }
     )
 
+def list_model_versions(username: str):
+    col = model_versions_col()
+    return list(col.find({"username": username}).sort("created_at", -1))
+
 def get_active_model_version(username: str):
-    col = _col()
-    return col.find_one(
-        {"username": username, "is_active": True},
-        sort=[("created_at", -1)],
-    )
+    col = model_versions_col()
+    return col.find_one({"username": username, "is_active": True}, sort=[("created_at", -1)])

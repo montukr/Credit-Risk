@@ -1,13 +1,20 @@
 from fastapi import APIRouter, Depends
-from ..core.deps import get_current_customer
-from ..core.db import get_db
-from ..schemas.transaction import TransactionCreate
-from ..schemas.risk import RiskSummary, FeatureContribution
-from ..services.customer_service import handle_add_transaction, get_user_transactions
-from ..services.ml_service import score_customer
-from ..core.serialization import to_str_id, to_str_id_list  # NEW
+
+from app.core.deps import get_current_customer
+from app.core.db import get_db
+from app.schemas.transaction import TransactionCreate
+from app.schemas.risk import RiskSummary
+from app.schemas.customer import CreditLimitUpdate
+from app.services.customer_service import handle_add_transaction, get_user_transactions
+from app.services.ml_service import score_customer
+from app.core.serialization import to_str_id, to_str_id_list
+from app.models.customer import (
+    ensure_customer_for_user,
+    update_customer_credit_limit_for_user,
+)
 
 router = APIRouter(prefix="/user", tags=["user"])
+
 
 @router.post("/transactions/add")
 def add_transaction(
@@ -21,6 +28,7 @@ def add_transaction(
         "customer": to_str_id(customer),
     }
 
+
 @router.get("/transactions")
 def list_transactions(
     current_user=Depends(get_current_customer),
@@ -32,21 +40,38 @@ def list_transactions(
         "customer": to_str_id(customer),
     }
 
+
 @router.get("/risk_summary", response_model=RiskSummary)
 def risk_summary(
     current_user=Depends(get_current_customer),
     db=Depends(get_db),
 ):
-    from ..models.customer import ensure_customer_for_user
+    # ensure customer doc exists
     customer = ensure_customer_for_user(db, current_user)
+
+    # for now, single admin model owner
     admin_username = "admin"
-    risk = score_customer(db, admin_username, customer)
+
+    # score_customer only takes (admin_username, customer)
+    risk = score_customer(admin_username, customer)
+
     return RiskSummary(
         ml_probability=risk["ml_probability"],
         ensemble_probability=risk["ensemble_probability"],
         risk_band=risk["risk_band"],
         top_features=[
-            FeatureContribution(feature=f["feature"], value=f["value"])
-            for f in risk["top_features"][:3]
+            {"feature": f["feature"], "value": f["value"]}
+            for f in risk["top_features"]
         ],
+        rules=[],
     )
+
+
+@router.patch("/credit_limit")
+def update_own_credit_limit(
+    payload: CreditLimitUpdate,
+    current_user=Depends(get_current_customer),
+    db=Depends(get_db),
+):
+    update_customer_credit_limit_for_user(db, current_user, payload.credit_limit)
+    return {"status": "ok"}

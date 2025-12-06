@@ -5,7 +5,6 @@ from ..models.user import create_user, get_user_by_username, update_last_login
 def register_user(db, username: str, email: str, password: str):
     pwd_hash = hash_password(password)
     try:
-        # default new users to "user" role
         user = create_user(db, username, email, pwd_hash, role="user")
     except ValueError as e:
         raise HTTPException(

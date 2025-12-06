@@ -23,7 +23,6 @@ export default function LoginPage() {
     } catch (err) {
       const detail = err?.response?.data?.detail;
       if (Array.isArray(detail)) {
-        // validation error array from FastAPI
         setError(detail[0]?.msg || "Invalid input");
       } else if (typeof detail === "string") {
         setError(detail);
@@ -72,8 +71,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="muted" style={{ marginTop: 10 }}>
-          New customer?{" "}
-          <Link to="/register">Create an account</Link>
+          New customer? <Link to="/register">Create an account</Link>
         </p>
       </div>
     </div>

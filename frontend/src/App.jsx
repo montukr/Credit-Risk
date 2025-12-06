@@ -7,56 +7,95 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UserDashboard from "./pages/UserDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
-import Layout from "./components/Layout";
+import AdminOverviewPage from "./pages/AdminOverviewPage";
+import AdminModelsPage from "./pages/AdminModelsPage";
+import AdminRiskLabPage from "./pages/AdminRiskLabPage";
+import Navbar from "./components/Navbar";
 
 function Home() {
   const { user } = useAuth();
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "admin") {
+    // send admins to the Overview page by default
+    return <Navigate to="/admin/overview" replace />;
   }
-  return user.role === "admin" ? <AdminDashboard /> : <UserDashboard />;
+  return <Navigate to="/user/dashboard" replace />;
 }
 
 function AppRoutes() {
   return (
-    <Routes>
-      {/* Public */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
+    <>
+      <Navbar />
 
-      {/* Authenticated area wrapped once with Layout */}
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Layout>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+
+        {/* Role-aware home */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
               <Home />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/user/dashboard"
-        element={
-          <ProtectedRoute role="user">
-            <Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* User dashboard */}
+        <Route
+          path="/user/dashboard"
+          element={
+            <ProtectedRoute role="user">
               <UserDashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedRoute role="admin">
-            <Layout>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin overview (visual KPIs) */}
+        <Route
+          path="/admin/overview"
+          element={
+            <ProtectedRoute role="admin">
+              <AdminOverviewPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin portfolio (table + per-user view) */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute role="admin">
               <AdminDashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin: model management */}
+        <Route
+          path="/admin/models"
+          element={
+            <ProtectedRoute role="admin">
+              <AdminModelsPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin: risk lab */}
+        <Route
+          path="/admin/risk-lab"
+          element={
+            <ProtectedRoute role="admin">
+              <AdminRiskLabPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

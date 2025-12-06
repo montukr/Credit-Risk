@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import auth, user, admin, ml
 
-app = FastAPI(title="Credit Risk Platform")
+from app.routers import auth, user, admin
+from app.routers import risk  # new ML / risk API
+
+app = FastAPI(title="Early Risk Signals - Credit Card Delinquency")
 
 origins = [
     "http://localhost:5173",
@@ -20,7 +22,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(user.router)
 app.include_router(admin.router)
-app.include_router(ml.router)
+app.include_router(risk.router)
 
 @app.get("/")
 def root():

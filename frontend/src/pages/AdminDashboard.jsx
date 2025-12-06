@@ -1,132 +1,134 @@
 import React, { useEffect, useState } from "react";
+import Layout from "../components/Layout";
 import api from "../api";
 
-export default function AdminDashboard() {
-  const [customers, setCustomers] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [newLimit, setNewLimit] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  async function load() {
-    setLoading(true);
-    const res = await api.get("/admin/customers");
-    setCustomers(res.data);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    load().catch(() => setLoading(false));
-  }, []);
-
-  const onRowClick = (c) => {
-    setSelected(c);
-    setNewLimit(String(c.CreditLimit));
-  };
+function CustomerDetailDrawer({ customer, onClose, onUpdated }) {
+  const [limit, setLimit] = useState(customer.CreditLimit);
 
   const saveLimit = async () => {
-    if (!selected) return;
-    const val = parseFloat(newLimit);
-    if (!val) return;
-    setSaving(true);
-    try {
-      await api.patch(`/admin/customers/${selected.id}/credit_limit`, {
-        credit_limit: val,
-      });
-      await load();
-      const updated = customers.find((x) => x.id === selected.id);
-      setSelected(updated || null);
-    } finally {
-      setSaving(false);
-    }
+    await api.patch(`/admin/customers/${customer.id}/credit_limit`, {
+      credit_limit: Number(limit),
+    });
+    await onUpdated();
   };
 
   return (
-    <div className="app-root">
-      <div className="app-main">
+    <div className="drawer">
+      <div className="drawer-header">
+        <h3>{customer.username || customer.CustomerID}</h3>
+        <button type="button" onClick={onClose}>
+          ×
+        </button>
+      </div>
+      <div className="drawer-body">
+        <p>CustomerID: {customer.CustomerID}</p>
+        <p>Current risk band: {customer.risk_band || "-"}</p>
+        <p>Utilisation: {(customer.UtilisationPct || 0).toFixed(1)}%</p>
 
-        <h1>Portfolio overview</h1>
-        <p className="page-caption">
-          Monitor customer utilisation and adjust credit lines based on risk.
-        </p>
+        <label>
+          <span>Credit limit (₹)</span>
+          <input
+            type="number"
+            value={limit}
+            onChange={(e) => setLimit(e.target.value)}
+          />
+        </label>
+        <button type="button" onClick={saveLimit}>
+          Save credit limit
+        </button>
 
-        <div className="card">
-          <div className="card-header">Customer list</div>
-          {loading && <p className="muted">Loading customers...</p>}
-          {!loading && (
-            <div className="preview-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>CustomerID</th>
-                    <th>Credit limit</th>
-                    <th>Utilisation %</th>
-                    <th>Risk band</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {customers.map((c) => (
-                    <tr
-                      key={c.id}
-                      style={{
-                        cursor: "pointer",
-                        background:
-                          selected?.id === c.id
-                            ? "rgba(191,219,254,0.4)"
-                            : "white",
-                      }}
-                      onClick={() => onRowClick(c)}
-                    >
-                      <td>{c.CustomerID}</td>
-                      <td>₹ {c.CreditLimit.toLocaleString()}</td>
-                      <td>{c.UtilisationPct.toFixed(1)}%</td>
-                      <td>{c.risk_band || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {selected && (
-          <div className="card">
-            <div className="card-header">
-              Manage credit line · {selected.CustomerID}
-            </div>
-            <div className="row">
-              <div className="col">
-                <p className="muted">
-                  Current limit: ₹ {selected.CreditLimit.toLocaleString()}
-                </p>
-                <label>
-                  <span>New credit limit</span>
-                  <input
-                    type="number"
-                    value={newLimit}
-                    onChange={(e) => setNewLimit(e.target.value)}
-                  />
-                </label>
-                <button onClick={saveLimit} disabled={saving}>
-                  {saving ? "Saving..." : "Save change"}
-                </button>
-              </div>
-              <div className="col">
-                <p className="muted">
-                  Utilisation: {selected.UtilisationPct.toFixed(1)}%
-                </p>
-                <p className="muted">
-                  Risk band: {selected.risk_band || "not scored yet"}
-                </p>
-                <p className="info-text">
-                  For demo, risk bands come from the ML delinquency model.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Extend here with controls: spend_cap, category_blocks, alerts_enabled */}
       </div>
     </div>
+  );
+}
+
+export default function AdminDashboard() {
+  const [customers, setCustomers] = useState([]);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState(null);
+
+  const loadCustomers = async () => {
+    const res = await api.get("/admin/customers");
+    setCustomers(res.data || []);
+  };
+
+  useEffect(() => {
+    loadCustomers().catch(console.error);
+  }, []);
+
+  const filtered = customers.filter((c) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    const uname = (c.username || "").toLowerCase();
+    const cid = (c.CustomerID || "").toLowerCase();
+    return uname.includes(q) || cid.includes(q);
+  });
+
+  return (
+    <Layout>
+      <h1>Customer portfolio</h1>
+      <p className="page-caption">
+        Search and manage individual cardholders: limits, controls, and risk posture.
+      </p>
+
+      <div className="card">
+        <div
+          className="card-header"
+          style={{ display: "flex", justifyContent: "space-between" }}
+        >
+          <span>Customers</span>
+          <input
+            type="text"
+            placeholder="Search by username / CustomerID"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ maxWidth: 260 }}
+          />
+        </div>
+        <div className="preview-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Username</th>
+                <th>CustomerID</th>
+                <th>Credit limit</th>
+                <th>Utilisation %</th>
+                <th>Risk band</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.username || c.CustomerID}</td>
+                  <td>{c.CustomerID}</td>
+                  <td>₹ {c.CreditLimit}</td>
+                  <td>{(c.UtilisationPct || 0).toFixed(1)}%</td>
+                  <td>{c.risk_band || "-"}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="pill-btn"
+                      onClick={() => setSelected(c)}
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selected && (
+        <CustomerDetailDrawer
+          customer={selected}
+          onClose={() => setSelected(null)}
+          onUpdated={loadCustomers}
+        />
+      )}
+    </Layout>
   );
 }

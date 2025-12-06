@@ -10,7 +10,7 @@ def create_user(db, username: str, email: str, password_hash: str, role: str = "
     doc = {
         "username": username,
         "email": email,
-        "hashed_password": password_hash,  # matches your existing document
+        "hashed_password": password_hash,  # match your existing admin doc
         "role": role,
         "created_at": datetime.utcnow(),
         "last_login": None,

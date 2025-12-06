@@ -87,8 +87,7 @@ export default function RegisterPage() {
           </button>
         </form>
         <p className="muted" style={{ marginTop: 10 }}>
-          Already have an account?{" "}
-          <Link to="/login">Sign in</Link>
+          Already have an account? <Link to="/login">Sign in</Link>
         </p>
       </div>
     </div>
