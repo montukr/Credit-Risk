@@ -73,7 +73,7 @@ export default function UserDashboard() {
     <div className="app-root">
       <div className="app-main">
 
-        <h1>My NovaCard</h1>
+        <h1>My HDFC Credit Card</h1>
         <p className="page-caption">
           See your card stats, recent spends, and how your behaviour impacts delinquency risk.
         </p>

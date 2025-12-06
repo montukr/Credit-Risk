@@ -41,7 +41,7 @@ export default function RegisterPage() {
   return (
     <div className="app-root">
       <div className="auth-card">
-        <h1>Create NovaCard account</h1>
+        <h1>Create HDFC Credit Card account</h1>
         <p className="page-caption">
           Password can be as short as 4 characters for this sandbox.
         </p>

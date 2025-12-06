@@ -15,18 +15,23 @@ def risk_scores_col(db):
 
 
 def ensure_customer_for_user(db, user):
+    """
+    Ensure there is exactly one customer doc for a logged-in end user.
+    Only called from user-facing routes, not admin routes.
+    """
     col = customers_col(db)
-    existing = col.find_one({"user_id": str(user["_id"])})
+    existing = col.find_one({"user_id": str(user["_id"]), "source": "app_user"})
     if existing:
         return existing
 
     doc = {
         "user_id": str(user["_id"]),
-        "username": user["username"],          # for admin search
-        "CustomerID": user["username"],        # show username as card name
+        "username": user["username"],                 # real login username
+        "CustomerID": f"C{str(user['_id'])[-6:]}",    # card/customer id
+        "source": "app_user",                         # mark as app user customer
         "CreditLimit": 100000.0,
         "UtilisationPct": 0.0,
-        "AvgPaymentRatio": 100.0,             # demo defaults
+        "AvgPaymentRatio": 100.0,
         "MinDuePaidFrequency": 100.0,
         "MerchantMixIndex": 0.5,
         "CashWithdrawalPct": 0.0,
@@ -45,7 +50,7 @@ def ensure_customer_for_user(db, user):
 def add_transaction(db, customer_id: str, amount: float, category: str, description: str | None):
     tx = {
         "customer_id": customer_id,
-        "amount": float(amount),
+        "amount": amount,
         "category": category,
         "description": description,
         "timestamp": datetime.utcnow(),
@@ -70,27 +75,23 @@ def update_customer_aggregates_simple(db, customer):
     - MerchantMixIndex
     - CashWithdrawalPct
     - RecentSpendChangePct
-
-    Keep AvgPaymentRatio and MinDuePaidFrequency as static demo values for now.
     """
+    customers = customers_col(db)
+    transactions = transactions_col(db)
+
     cust_id = str(customer["_id"])
     credit_limit = float(customer.get("CreditLimit", 1.0))
 
-    txs = list(transactions_col(db).find({"customer_id": cust_id}))
+    txs = list(transactions.find({"customer_id": cust_id}))
     total_spend = sum(float(t["amount"]) for t in txs) or 0.0
     utilisation_pct = (total_spend / credit_limit) * 100.0 if credit_limit > 0 else 0.0
 
-    # Simple merchant mix: distinct categories / total tx
-    merchant_mix_index = 0.0
-    if txs:
-        categories = {t.get("category") for t in txs}
-        merchant_mix_index = len(categories) / len(txs)
+    categories = {t.get("category") for t in txs}
+    merchant_mix_index = (len(categories) / len(txs)) if txs else 0.0
 
-    # Cash withdrawal %: share of spend where category == "cash"
     cash_spend = sum(float(t["amount"]) for t in txs if t.get("category") == "cash")
     cash_withdrawal_pct = (cash_spend / total_spend * 100.0) if total_spend > 0 else 0.0
 
-    # Recent spend change: last 30 days vs previous 30 days
     now = datetime.utcnow()
     last_30 = now - timedelta(days=30)
     prev_60 = now - timedelta(days=60)
@@ -117,19 +118,22 @@ def update_customer_aggregates_simple(db, customer):
         "RecentSpendChangePct": recent_change_pct,
         "updated_at": datetime.utcnow(),
     }
-    customers_col(db).update_one({"_id": customer["_id"]}, {"$set": update})
+    customers.update_one({"_id": customer["_id"]}, {"$set": update})
     customer.update(update)
     return customer
 
 
 def admin_list_customers(db):
-    # expose username/CustomerID for search and display
+    """
+    Return only customers that come from logged-in app users (source='app_user'),
+    with both username and CustomerID so the portfolio table can show them separately.
+    """
     return list(
         customers_col(db).find(
-            {},
+            {"source": "app_user"},
             {
-                "CustomerID": 1,
                 "username": 1,
+                "CustomerID": 1,
                 "CreditLimit": 1,
                 "UtilisationPct": 1,
                 "risk_band": 1,
@@ -142,7 +146,7 @@ def admin_list_customers(db):
 def admin_update_credit_limit(db, customer_id: str, new_limit: float):
     customers_col(db).update_one(
         {"_id": ObjectId(customer_id)},
-        {"$set": {"CreditLimit": float(new_limit)}},
+        {"$set": {"CreditLimit": float(new_limit), "updated_at": datetime.utcnow()}},
     )
 
 
@@ -156,13 +160,27 @@ def admin_update_controls(db, customer_id: str, controls: dict):
 def get_customer_by_id(db, customer_id: str):
     return customers_col(db).find_one({"_id": ObjectId(customer_id)})
 
+
 def update_customer_credit_limit_for_user(db, user, new_limit: float):
-    """
-    Update CreditLimit for the logged-in user's customer record.
-    """
-    col = customers_col(db)
     customer = ensure_customer_for_user(db, user)
-    col.update_one(
+    customers_col(db).update_one(
         {"_id": customer["_id"]},
         {"$set": {"CreditLimit": float(new_limit), "updated_at": datetime.utcnow()}},
     )
+
+def get_customer_with_latest_score(db, customer_id: str):
+    customer = customers_col(db).find_one({"_id": ObjectId(customer_id)})
+    if not customer:
+        return None
+
+    latest_score = risk_scores_col(db).find_one(
+        {"customer_id": customer["CustomerID"]},  # <- use CustomerID
+        sort=[("timestamp", -1)],
+    )
+
+    if latest_score:
+        customer["risk_band"] = latest_score.get("risk_band")
+        customer["last_score"] = latest_score.get("ensemble_probability")
+
+    return customer
+

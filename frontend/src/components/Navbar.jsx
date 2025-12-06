@@ -19,7 +19,7 @@ export default function Navbar() {
       {/* Left Branding */}
       <div className="navbar-title">
         <span className="logo-mark" />
-        <span>NovaCard Risk</span>
+        <span>HDFC Credit Card</span>
       </div>
 
       {/* Center Navigation Links */}

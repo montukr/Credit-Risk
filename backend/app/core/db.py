@@ -1,7 +1,12 @@
+from typing import Optional
+
 from pymongo import MongoClient
 from .config import settings
 
-_client = None
+
+_client: Optional[MongoClient] = None
+_db = None
+
 
 def get_client() -> MongoClient:
     global _client
@@ -9,6 +14,14 @@ def get_client() -> MongoClient:
         _client = MongoClient(settings.MONGODB_URI)
     return _client
 
+
 def get_db():
-    client = get_client()
-    return client[settings.MONGODB_DB]
+    """
+    Return the main MongoDB database object using the URI and DB name
+    from settings.
+    """
+    global _db
+    if _db is None:
+        client = get_client()
+        _db = client[settings.MONGODB_DB]
+    return _db

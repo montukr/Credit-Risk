@@ -37,7 +37,7 @@ export default function LoginPage() {
   return (
     <div className="app-root">
       <div className="auth-card">
-        <h1>Sign in to NovaCard</h1>
+        <h1>Sign in to HDFC Credit Card</h1>
         <p className="page-caption">
           Access your credit card, spending insights, and risk profile.
         </p>

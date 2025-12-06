@@ -6,6 +6,7 @@ class CustomerSummary(BaseModel):
     CustomerID: str
     CreditLimit: float
     UtilisationPct: float
+    username: Optional[str] = None   # <- add this
     risk_band: Optional[str] = None
     last_score: Optional[float] = None
 
