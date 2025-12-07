@@ -1,0 +1,54 @@
+# Root .gitignore for Credit_Risk monorepo
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python virtualenvs
+.venv/
+venv/
+env/
+
+# Node dependencies (frontend)
+node_modules/
+
+# Env / secrets
+.env
+.env.*
+*.env
+
+# Logs
+*.log
+logs/
+backend.log
+frontend.log
+
+# MacOS metadata
+.AppleDouble
+.LSOverride
+
+# Coverage / test artifacts
+coverage/
+htmlcov/
+.tox/
+.pytest_cache/
+
+# Cache
+.cache/
+__pycache__/
+
+# Build / dist outputs
+dist/
+build/
+*.egg-info/
+
+# Local data / scratch
+*.sqlite3
+*.db
+*.pid
+*.tmp
+tmp/
