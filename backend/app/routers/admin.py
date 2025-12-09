@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from ..core.deps import get_current_admin
 from ..core.db import get_db
 from ..schemas.customer import CustomerSummary, CreditLimitUpdate, ControlsUpdate
@@ -8,8 +8,12 @@ from ..models.customer import (
     admin_update_controls,
     get_customer_by_id,
     get_customer_with_latest_score,
+    get_transactions_for_customer_id,
 )
 from ..core.serialization import to_str_id, to_str_id_list
+from ..models.customer import customers_col
+from app.services.ml_service import score_customer
+
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -90,3 +94,53 @@ def admin_update_features(
     # payload keys: CreditLimit, UtilisationPct, AvgPaymentRatio, ...
     admin_update_controls(db, customer_id, payload)
     return {"status": "ok"}
+
+@router.get("/customer/{customer_id}/transactions")
+def customer_transactions(
+    customer_id: str,
+    current_admin=Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    txs = get_transactions_for_customer_id(db, customer_id)
+    return {"transactions": to_str_id_list(txs)}
+
+
+
+@router.get("/top/customers")
+def top_customers(
+    kind: str = Query("latest", enum=["latest", "flagged", "utilisation", "cash"]),
+    limit: int = Query(10, ge=1, le=50),
+    current_admin=Depends(get_current_admin),
+    db=Depends(get_db),
+):
+    col = customers_col(db)
+
+    if kind == "latest":
+        cursor = (
+            col.find({"source": "app_user"})
+            .sort("created_at", -1)
+            .limit(limit)
+        )
+    elif kind == "flagged":
+        cursor = (
+            col.find({"source": "app_user", "risk_band": {"$in": ["High", "Critical"]}})
+            .sort("updated_at", -1)
+            .limit(limit)
+        )
+    elif kind == "utilisation":
+        cursor = (
+            col.find({"source": "app_user"})
+            .sort("UtilisationPct", -1)
+            .limit(limit)
+        )
+    elif kind == "cash":
+        cursor = (
+            col.find({"source": "app_user"})
+            .sort("CashWithdrawalPct", -1)
+            .limit(limit)
+        )
+    else:
+        cursor = []
+
+    rows = to_str_id_list(list(cursor))
+    return {"customers": rows}

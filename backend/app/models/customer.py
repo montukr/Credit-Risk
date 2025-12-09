@@ -184,3 +184,20 @@ def get_customer_with_latest_score(db, customer_id: str):
 
     return customer
 
+# models/customer.py
+
+def get_transactions_for_customer_id(db, customer_id: str, limit: int = 20):
+    """
+    Admin helper: list recent transactions for a given customer _id.
+    """
+    cust = customers_col(db).find_one({"_id": ObjectId(customer_id)})
+    if not cust:
+        return []
+
+    cust_id_str = str(cust["_id"])
+    return list(
+        transactions_col(db)
+        .find({"customer_id": cust_id_str})
+        .sort("timestamp", -1)
+        .limit(limit)
+    )
