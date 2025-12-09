@@ -5,20 +5,21 @@ export default function UserDashboard() {
   const [summary, setSummary] = useState(null);
   const [txForm, setTxForm] = useState({
     amount: "",
-    category: "food_online", // Updated initial category
+    category: "food_online", // initial category
     description: "",
   });
   const [loadingTx, setLoadingTx] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState("");
 
   async function load() {
     setLoading(true);
+    setErrorMsg("");
     try {
-      // Fetch both risk summary and transactions in parallel
-      const [riskRes, txRes] = await Promise.all([
-        api.get("/user/risk_summary"),
-        api.get("/user/transactions"),
-      ]);
+      // ---- FIX: sequential calls (NOT parallel) ----
+      const txRes = await api.get("/user/transactions");
+      const riskRes = await api.get("/user/risk_summary");
+
       setSummary({
         risk: riskRes.data,
         customer: txRes.data.customer,
@@ -26,7 +27,7 @@ export default function UserDashboard() {
       });
     } catch (error) {
       console.error("Error loading dashboard data:", error);
-      // Handle error, maybe set an error state
+      setErrorMsg("Failed to load account data. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -42,12 +43,18 @@ export default function UserDashboard() {
 
   const addTransaction = async (e) => {
     e.preventDefault();
+    setErrorMsg("");
+
     // Simple validation
-    if (!txForm.amount || isNaN(parseFloat(txForm.amount)) || parseFloat(txForm.amount) <= 0) {
-      alert("Please enter a valid positive amount.");
+    if (
+      !txForm.amount ||
+      isNaN(parseFloat(txForm.amount)) ||
+      parseFloat(txForm.amount) <= 0
+    ) {
+      setErrorMsg("Please enter a valid positive amount.");
       return;
     }
-    
+
     setLoadingTx(true);
     try {
       await api.post("/user/transactions/add", {
@@ -55,11 +62,24 @@ export default function UserDashboard() {
         category: txForm.category,
         description: txForm.description || null,
       });
+
       // Reset form and reload data
       setTxForm({ amount: "", category: "food_online", description: "" });
       await load();
     } catch (error) {
       console.error("Error adding transaction:", error);
+      const detail = error?.response?.data?.detail;
+      if (detail && detail.code === "LIMIT_EXCEEDED") {
+        const available =
+          typeof detail.available_credit === "number"
+            ? detail.available_credit.toFixed(2)
+            : "0.00";
+        setErrorMsg(
+          `Limit utilised. Available credit is ₹ ${available}. This transaction cannot be processed.`
+        );
+      } else {
+        setErrorMsg("Could not add transaction. Please try again.");
+      }
     } finally {
       setLoadingTx(false);
     }
@@ -69,16 +89,35 @@ export default function UserDashboard() {
   const risk = summary?.risk;
   const txs = summary?.transactions || [];
 
+  const availableCredit = customer?.available_credit;
+  const currentBalance = customer?.current_balance;
+  const creditLimit = customer?.CreditLimit;
+
   return (
     <div className="app-root">
       <div className="app-main">
-
         <h1>My HDFC Credit Card</h1>
         <p className="page-caption">
-          See your card stats, recent spends, and how your behaviour impacts delinquency risk.
+          See your card stats, recent spends, and how your behaviour impacts
+          delinquency risk.
         </p>
 
         {loading && <p className="muted">Loading account...</p>}
+
+        {!loading && errorMsg && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: 10,
+              borderRadius: 8,
+              background: "#fef2f2",
+              color: "#b91c1c",
+              border: "1px solid #fecaca",
+            }}
+          >
+            {errorMsg}
+          </div>
+        )}
 
         {!loading && summary && (
           <>
@@ -87,14 +126,42 @@ export default function UserDashboard() {
               <div className="card-header">Account and Behavioural Snapshot</div>
               <div className="row">
                 <div className="col">
-                  <p>Customer ID: <strong>{customer.CustomerID}</strong></p>
-                  <p>Credit limit: <strong>₹ {customer.CreditLimit.toLocaleString()}</strong></p>
-                  <p>Utilisation: <strong>{customer.UtilisationPct?.toFixed(1)}%</strong></p>
-                  <p style={{ marginTop: '10px' }}>
+                  <p>
+                    Customer ID: <strong>{customer.CustomerID}</strong>
+                  </p>
+                  <p>
+                    Credit limit:{" "}
+                    <strong>
+                      ₹ {creditLimit?.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </strong>
+                  </p>
+                  <p>
+                    Current balance:{" "}
+                    <strong>
+                      ₹{" "}
+                      {(currentBalance || 0).toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </strong>
+                  </p>
+                  <p>
+                    Available credit:{" "}
+                    <strong>
+                      ₹{" "}
+                      {(availableCredit || 0).toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
+                    </strong>
+                  </p>
+                  <p>
+                    Utilisation:{" "}
+                    <strong>{customer.UtilisationPct?.toFixed(1)}%</strong>
+                  </p>
+                  <p style={{ marginTop: "10px" }}>
                     Current Risk Band:
                     <strong
                       style={{
-                        marginLeft: '5px',
+                        marginLeft: "5px",
                         color:
                           risk.risk_band === "High"
                             ? "#b91c1c"
@@ -103,27 +170,49 @@ export default function UserDashboard() {
                             : "#166534",
                       }}
                     >
-                      {risk.risk_band} ({ (risk.ensemble_probability * 100).toFixed(1) }%)
+                      {risk.risk_band} (
+                      {(risk.ensemble_probability * 100).toFixed(1)}%)
                     </strong>
                   </p>
                 </div>
-                
+
                 {/* Behavioral features - Left column */}
                 <div className="col">
-                  <p>Avg payment ratio: <strong>{customer.AvgPaymentRatio?.toFixed(1)}%</strong></p>
-                  <p>Min due paid freq: <strong>{customer.MinDuePaidFrequency?.toFixed(1)}%</strong></p>
-                  <p>Cash withdrawal %: <strong>{customer.CashWithdrawalPct?.toFixed(1)}%</strong></p>
+                  <p>
+                    Avg payment ratio:{" "}
+                    <strong>{customer.AvgPaymentRatio?.toFixed(1)}%</strong>
+                  </p>
+                  <p>
+                    Min due paid freq:{" "}
+                    <strong>{customer.MinDuePaidFrequency?.toFixed(1)}%</strong>
+                  </p>
+                  <p>
+                    Cash withdrawal %:{" "}
+                    <strong>{customer.CashWithdrawalPct?.toFixed(1)}%</strong>
+                  </p>
                 </div>
-                
+
                 {/* Behavioral features - Right column */}
                 <div className="col">
-                  <p>Merchant mix index: <strong>{customer.MerchantMixIndex?.toFixed(2)}</strong></p>
-                  <p>Recent spend change: <strong>{customer.RecentSpendChangePct?.toFixed(1)}%</strong></p>
-                  <p>Time since last transaction: <strong>{customer.TimeSinceLastTxDays || '-'} days</strong></p>
+                  <p>
+                    Merchant mix index:{" "}
+                    <strong>{customer.MerchantMixIndex?.toFixed(2)}</strong>
+                  </p>
+                  <p>
+                    Recent spend change:{" "}
+                    <strong>
+                      {customer.RecentSpendChangePct?.toFixed(1)}%
+                    </strong>
+                  </p>
+                  <p>
+                    Time since last transaction:{" "}
+                    <strong>{customer.TimeSinceLastTxDays || "-"} days</strong>
+                  </p>
                 </div>
               </div>
-              <p className="info-text" style={{ marginTop: '10px' }}>
-                Your **Current Risk Band** is driven by the ML delinquency model, which uses these behavioural features.
+              <p className="info-text" style={{ marginTop: "10px" }}>
+                Your Current Risk Band is driven by the ML delinquency model,
+                which uses these behavioural features.
               </p>
             </div>
 
@@ -154,9 +243,11 @@ export default function UserDashboard() {
                         value={txForm.category}
                         onChange={onTxChange}
                       >
-                        <option value="food_online">Food delivery (Zomato, Swiggy)</option>
+                        <option value="food_online">
+                          Food delivery (Zomato, Swiggy)
+                        </option>
                         <option value="groceries">Groceries</option>
-                        <option value="utilities">Utilities & bills</option>
+                        <option value="utilities">Utilities &amp; bills</option>
                         <option value="fuel">Fuel</option>
                         <option value="travel">Travel</option>
                         <option value="entertainment">Entertainment</option>
@@ -179,13 +270,22 @@ export default function UserDashboard() {
                   </div>
                 </div>
 
-                <button type="submit" disabled={loadingTx || !txForm.amount || parseFloat(txForm.amount) <= 0}>
+                <button
+                  type="submit"
+                  disabled={
+                    loadingTx ||
+                    !txForm.amount ||
+                    parseFloat(txForm.amount) <= 0
+                  }
+                >
                   {loadingTx ? "Adding..." : "Add dummy transaction"}
                 </button>
               </form>
 
               <p className="muted" style={{ marginTop: 6 }}>
-                Each transaction updates your behavioural features and triggers a fresh risk score.
+                Each transaction updates your behavioural features and triggers
+                a fresh risk score. Transactions that exceed your credit limit
+                are blocked.
               </p>
             </div>
 
@@ -196,12 +296,17 @@ export default function UserDashboard() {
                 <p className="muted">No spends yet. Add one above.</p>
               ) : (
                 txs.slice(0, 10).map((t) => (
-                  <div key={t.id || t._id || t.timestamp} className="dataset-row">
+                  <div
+                    key={t.id || t._id || t.timestamp}
+                    className="dataset-row"
+                  >
                     <div>
                       <div style={{ fontWeight: 500 }}>₹ {t.amount}</div>
                       <div className="muted">
                         {t.description || t.category} •{" "}
-                        {t.timestamp ? new Date(t.timestamp).toLocaleString() : 'N/A'}
+                        {t.timestamp
+                          ? new Date(t.timestamp).toLocaleString()
+                          : "N/A"}
                       </div>
                     </div>
                     <div className="pill">{t.category}</div>
