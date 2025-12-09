@@ -6,8 +6,8 @@ import ProtectedRoute from "./ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import UserDashboard from "./pages/UserDashboard";
+import AdminPortfolio from "./pages/AdminPortfolio";
 import AdminDashboard from "./pages/AdminDashboard";
-import AdminOverviewPage from "./pages/AdminOverviewPage";
 import AdminModelsPage from "./pages/AdminModelsPage";
 import AdminRiskLabPage from "./pages/AdminRiskLabPage";
 import Navbar from "./components/Navbar";
@@ -57,7 +57,7 @@ function AppRoutes() {
           path="/admin/overview"
           element={
             <ProtectedRoute role="admin">
-              <AdminOverviewPage />
+              <AdminDashboard />
             </ProtectedRoute>
           }
         />
@@ -67,7 +67,7 @@ function AppRoutes() {
           path="/admin/dashboard"
           element={
             <ProtectedRoute role="admin">
-              <AdminDashboard />
+              <AdminPortfolio />
             </ProtectedRoute>
           }
         />

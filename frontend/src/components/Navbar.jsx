@@ -28,7 +28,7 @@ export default function Navbar() {
           to={overviewPath}
           className={({ isActive }) => (isActive ? "active-link" : "")}
         >
-          Overview
+          Dashboard
         </NavLink>
 
         {/* User Dashboard Link */}

@@ -1,346 +1,370 @@
 // src/pages/AdminDashboard.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import Layout from "../components/Layout";
 import api from "../api";
 
 export default function AdminDashboard() {
+  const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState([]);
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [saving, setSaving] = useState(false);
 
-  const loadCustomers = async () => {
-    const res = await api.get("/admin/customers");
-    setCustomers(res.data || []);
-  };
+  // expanded KPI card
+  const [expandedCard, setExpandedCard] = useState(null);
+  const [topData, setTopData] = useState([]);
+
+  // click outside closing
+  const wrapperRef = useRef(null);
 
   useEffect(() => {
-    loadCustomers().catch(console.error);
+    async function load() {
+      try {
+        const res = await api.get("/admin/customers");
+        setCustomers(res.data || []);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
-  const filtered = customers.filter((c) => {
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    const uname = (c.username || "").toLowerCase();
-    const cid = (c.CustomerID || "").toLowerCase();
-    return uname.includes(q) || cid.includes(q);
-  });
+  // CLICK OUTSIDE HANDLER
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (!expandedCard) return;
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setExpandedCard(null);
+      }
+    }
 
-  const handleBackToList = () => {
-    setSelected(null);
-  };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [expandedCard]);
 
-  const handleSaveDetail = async (updated) => {
-    if (!selected) return;
-    setSaving(true);
+  // Expansion handler
+  const toggleCard = async (key, kind) => {
+    if (expandedCard === key) {
+      setExpandedCard(null);
+      setTopData([]);
+      return;
+    }
+
     try {
-      const res = await api.patch(
-        `/admin/customers/${selected.id}/features`,
-        updated
-      );
-      // reload list so table reflects updated aggregates + band
-      await loadCustomers();
-      // merge updated fields + any new risk_band / last_score from backend
-      const extra = res.data || {};
-      setSelected((prev) => ({
-        ...prev,
-        ...updated,
-        risk_band: extra.risk_band ?? prev.risk_band,
-        last_score: extra.last_score ?? prev.last_score,
-      }));
+      const res = await api.get("/admin/top/customers", { params: { kind } });
+      setTopData(res.data.customers || []);
     } catch (e) {
       console.error(e);
-    } finally {
-      setSaving(false);
+      setTopData([]);
     }
+
+    setExpandedCard(key);
   };
 
-  // fetch full detail (with latest risk_band / last_score) when viewing
-  const handleViewCustomer = async (c) => {
-    try {
-      const res = await api.get(`/admin/customer/${c.id}`);
-      setSelected(res.data || c);
-    } catch (e) {
-      console.error(e);
-      // fallback to summary if detail call fails
-      setSelected(c);
-    }
-  };
+  // portfolio metrics
+  const total = customers.length;
+  const high = customers.filter((c) => c.risk_band === "High").length;
+  const medium = customers.filter((c) => c.risk_band === "Medium").length;
+  const low = customers.filter((c) => c.risk_band === "Low").length;
+
+  // flagged = only High (matches backend)
+  const flagged = high;
+
+  const avg = (f) =>
+    customers.length
+      ? customers.reduce((a, c) => a + (Number(c[f]) || 0), 0) /
+        customers.length
+      : 0;
+
+  const avgUtil = avg("UtilisationPct");
+  const avgCash = avg("CashWithdrawalPct");
+  const avgMix = avg("MerchantMixIndex");
+  const avgRecentChange = avg("RecentSpendChangePct");
 
   return (
     <Layout>
-      {!selected ? (
-        <>
-          <h1>Customer portfolio</h1>
-          <p className="page-caption">
-            Search and manage individual cardholders: limits, controls, and risk
-            posture.
-          </p>
+      <h1>Portfolio overview</h1>
+      <p className="page-caption">
+        At-a-glance view of customer volumes, risk flags, and portfolio behaviour.
+      </p>
 
-          <div className="card">
-            <div
-              className="card-header"
-              style={{ display: "flex", justifyContent: "space-between" }}
-            >
-              <span>Customers</span>
-              <input
-                type="text"
-                placeholder="Search by username / CustomerID"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ maxWidth: 260 }}
+      {loading && <p className="muted">Loading portfolio metrics…</p>}
+
+      {/* KPI GRID */}
+      <div
+        className="grid-2"
+        ref={wrapperRef}
+        style={{ gap: 18, marginBottom: 20 }}
+      >
+        <KpiCard
+          title="Total customers"
+          subtitle="Active cardholders"
+          value={total}
+          bg="linear-gradient(135deg,#1d4ed8,#3b82f6)"
+          cardKey="totalCustomers"
+          kind="latest"
+          expandedCard={expandedCard}
+          toggle={toggleCard}
+          topData={topData}
+        />
+
+        <KpiCard
+          title="Flagged customers"
+          subtitle="High risk"
+          value={flagged}
+          bg="linear-gradient(135deg,#b91c1c,#ef4444)"
+          cardKey="flaggedCustomers"
+          kind="flagged"
+          expandedCard={expandedCard}
+          toggle={toggleCard}
+          topData={topData}
+        />
+
+        <KpiCard
+          title="Average utilisation"
+          subtitle="Spend vs limit"
+          value={`${avgUtil.toFixed(1)}%`}
+          bg="linear-gradient(135deg,#047857,#22c55e)"
+          cardKey="avgUtilisation"
+          kind="utilisation"
+          expandedCard={expandedCard}
+          toggle={toggleCard}
+          topData={topData}
+        />
+
+        <KpiCard
+          title="Average cash usage"
+          subtitle="ATM / cash withdrawals"
+          value={`${avgCash.toFixed(1)}%`}
+          bg="linear-gradient(135deg,#7c2d12,#f97316)"
+          cardKey="avgCash"
+          kind="cash"
+          expandedCard={expandedCard}
+          toggle={toggleCard}
+          topData={topData}
+        />
+      </div>
+
+      {/* Risk + Behaviour sections */}
+      <div className="grid-2">
+        <div className="card">
+          <div className="card-header">Risk band distribution</div>
+
+          {total === 0 ? (
+            <p className="muted">No customers yet.</p>
+          ) : (
+            <>
+              {/* 3-band distribution bar */}
+              <div
+                style={{
+                  display: "flex",
+                  height: 26,
+                  borderRadius: 999,
+                  overflow: "hidden",
+                  border: "1px solid rgba(148,163,184,0.7)",
+                  marginBottom: 10,
+                }}
+              >
+                <BarSegment flex={low} color="#38bdf8" />
+                <BarSegment flex={medium} color="#eab308" />
+                <BarSegment flex={high} color="#f97316" />
+              </div>
+
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <LegendPill label="Low" value={low} total={total} color="#38bdf8" />
+                <LegendPill label="Medium" value={medium} total={total} color="#eab308" />
+                <LegendPill label="High" value={high} total={total} color="#f97316" />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="card-header">Behavioural signals</div>
+          {total === 0 ? (
+            <p className="muted">No behavioural data.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <BehaviourRow
+                label="Merchant mix index"
+                value={avgMix.toFixed(2)}
+                hint="Higher = more diversified spending across merchants."
+              />
+              <BehaviourRow
+                label="Recent spend change"
+                value={`${avgRecentChange.toFixed(1)}%`}
+                hint="Average month-on-month spend change."
+              />
+              <BehaviourRow
+                label="Utilisation profile"
+                value={
+                  avgUtil > 70
+                    ? "Aggressive utilisation portfolio"
+                    : avgUtil > 30
+                    ? "Balanced utilisation portfolio"
+                    : "Low utilisation portfolio"
+                }
+                hint="Interpretation of portfolio-level utilisation."
               />
             </div>
-            <div className="preview-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Username</th>
-                    <th>CustomerID</th>
-                    <th>Credit limit</th>
-                    <th>Utilisation %</th>
-                    <th>Risk band</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c) => (
-                    <tr key={c.id}>
-                      <td>{c.username || "-"}</td>
-                      <td>{c.CustomerID}</td>
-                      <td>₹ {c.CreditLimit}</td>
-                      <td>{(c.UtilisationPct || 0).toFixed(1)}%</td>
-                      <td>{c.risk_band || "-"}</td>
-                      <td>
-                        <button
-                          type="button"
-                          className="pill-btn"
-                          onClick={() => handleViewCustomer(c)}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="muted">
-                        No customers match this search.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
-      ) : (
-        <CustomerDetailPage
-          customer={selected}
-          onBack={handleBackToList}
-          onSave={handleSaveDetail}
-          saving={saving}
-        />
-      )}
+          )}
+        </div>
+      </div>
     </Layout>
   );
 }
 
-function CustomerDetailPage({ customer, onBack, onSave, saving }) {
-  const [form, setForm] = useState({
-    CreditLimit: customer.CreditLimit || 0,
-    UtilisationPct: customer.UtilisationPct || 0,
-    AvgPaymentRatio: customer.AvgPaymentRatio || 0,
-    MinDuePaidFrequency: customer.MinDuePaidFrequency || 0,
-    MerchantMixIndex: customer.MerchantMixIndex || 0,
-    CashWithdrawalPct: customer.CashWithdrawalPct || 0,
-    RecentSpendChangePct: customer.RecentSpendChangePct || 0,
-    DPDBucketNextMonthBinary: customer.DPDBucketNextMonthBinary || 0,
-  });
-
-  const [txs, setTxs] = useState([]);
-
-  useEffect(() => {
-    if (customer.id) {
-      api
-        .get(`/admin/customer/${customer.id}/transactions`)
-        .then((res) => setTxs(res.data.transactions || []))
-        .catch(console.error);
-    }
-  }, [customer.id]);
-
-  const onChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({
-      ...prev,
-      [name]: Number(value),
-    }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave(form);
-  };
+/*─────────────────────────────────────────────
+  KPI CARD (EXPANDS IN PLACE)
+─────────────────────────────────────────────*/
+function KpiCard({
+  title,
+  subtitle,
+  value,
+  bg,
+  cardKey,
+  kind,
+  expandedCard,
+  toggle,
+  topData,
+}) {
+  const expanded = expandedCard === cardKey;
 
   return (
-    <>
-      <button
-        type="button"
-        className="pill-btn"
-        style={{ marginBottom: 12 }}
-        onClick={onBack}
-      >
-        ← Back to portfolio
-      </button>
+    <div
+      style={{
+        background: bg,
+        color: "white",
+        padding: 16,
+        borderRadius: 16,
+        transition: "0.25s",
+        boxShadow: "0 12px 30px rgba(0,0,0,0.25)",
+        height: expanded ? "auto" : 130,
+        opacity: expandedCard && !expanded ? 0.35 : 1,
+        overflow: "hidden",
+      }}
+      onClick={(e) => expanded && e.stopPropagation()}
+    >
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <span style={{ fontWeight: 600 }}>{title}</span>
 
-      <h1>{customer.username || customer.CustomerID}</h1>
-      <p className="page-caption">
-        Full customer profile and ML feature controls for this cardholder.
-      </p>
-
-      <form onSubmit={handleSubmit} className="card">
-        <div className="card-header">Profile & features</div>
-
-        <div className="row">
-          <div className="col">
-            <label>
-              <span>CustomerID</span>
-              <input type="text" value={customer.CustomerID} disabled />
-            </label>
-            <label>
-              <span>Credit limit (₹)</span>
-              <input
-                type="number"
-                name="CreditLimit"
-                value={form.CreditLimit}
-                onChange={onChange}
-              />
-            </label>
-            <label>
-              <span>Utilisation %</span>
-              <input
-                type="number"
-                name="UtilisationPct"
-                value={form.UtilisationPct}
-                onChange={onChange}
-              />
-            </label>
-            <label>
-              <span>Avg payment ratio %</span>
-              <input
-                type="number"
-                name="AvgPaymentRatio"
-                value={form.AvgPaymentRatio}
-                onChange={onChange}
-              />
-            </label>
-          </div>
-
-          <div className="col">
-            <label>
-              <span>Min due paid frequency %</span>
-              <input
-                type="number"
-                name="MinDuePaidFrequency"
-                value={form.MinDuePaidFrequency}
-                onChange={onChange}
-              />
-            </label>
-            <label>
-              <span>Merchant mix index</span>
-              <input
-                type="number"
-                step="0.01"
-                name="MerchantMixIndex"
-                value={form.MerchantMixIndex}
-                onChange={onChange}
-              />
-            </label>
-            <label>
-              <span>Cash withdrawal %</span>
-              <input
-                type="number"
-                name="CashWithdrawalPct"
-                value={form.CashWithdrawalPct}
-                onChange={onChange}
-              />
-            </label>
-            <label>
-              <span>Recent spend change %</span>
-              <input
-                type="number"
-                name="RecentSpendChangePct"
-                value={form.RecentSpendChangePct}
-                onChange={onChange}
-              />
-            </label>
-          </div>
-
-          <div className="col">
-            <label>
-              <span>Next‑month DPD bucket (binary)</span>
-              <input
-                type="number"
-                name="DPDBucketNextMonthBinary"
-                value={form.DPDBucketNextMonthBinary}
-                onChange={onChange}
-              />
-            </label>
-            <div className="dataset-row" style={{ marginTop: 16 }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>
-                  Current risk band
-                </div>
-                <div style={{ fontSize: "1.1rem" }}>
-                  {customer.risk_band || "-"}
-                </div>
-                <div className="muted" style={{ fontSize: "0.8rem" }}>
-                  Based on latest ML ensemble probability.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
-          <button type="submit" disabled={saving}>
-            {saving ? "Saving..." : "Save changes"}
-          </button>
-        </div>
-      </form>
-
-      <div className="card" style={{ marginTop: 16 }}>
-        <div className="card-header">Recent transactions</div>
-        <div className="preview-table">
-          <table>
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Amount</th>
-                <th>Category</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {txs.map((t) => (
-                <tr key={t.id}>
-                  <td>{new Date(t.timestamp).toLocaleString()}</td>
-                  <td>₹ {t.amount}</td>
-                  <td>{t.category}</td>
-                  <td>{t.description || "-"}</td>
-                </tr>
-              ))}
-              {txs.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="muted">
-                    No transactions recorded for this customer yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <button
+          style={{
+            border: "none",
+            background: "rgba(255,255,255,0.28)",
+            padding: "2px 6px",
+            borderRadius: 999,
+            color: "#fff",
+            cursor: "pointer",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggle(cardKey, kind);
+          }}
+        >
+          {expanded ? "▲" : "▼"}
+        </button>
       </div>
-    </>
+
+      {/* VALUE */}
+      <div style={{ fontSize: "2rem", marginTop: 4 }}>{value}</div>
+      <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>{subtitle}</div>
+
+      {expanded && <ExpandedDetail title={title} list={topData} />}
+    </div>
+  );
+}
+
+/*─────────────────────────────────────────────
+  EXPANDED CONTENT
+─────────────────────────────────────────────*/
+function ExpandedDetail({ title, list }) {
+  return (
+    <div
+      style={{
+        marginTop: 14,
+        padding: 10,
+        background: "rgba(255,255,255,0.15)",
+        borderRadius: 10,
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <h4 style={{ marginBottom: 8, textAlign: "center" }}>{title} – Top 10</h4>
+
+      {list.length === 0 ? (
+        <p style={{ textAlign: "center" }}>No data available.</p>
+      ) : (
+        <table style={{ width: "100%", fontSize: "0.85rem" }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: "center" }}>User</th>
+              <th style={{ textAlign: "center" }}>ID</th>
+              <th style={{ textAlign: "center" }}>Util%</th>
+              <th style={{ textAlign: "center" }}>Cash%</th>
+              <th style={{ textAlign: "center" }}>Risk</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((c) => (
+              <tr key={c.id}>
+                <td style={{ textAlign: "center" }}>{c.username || "-"}</td>
+                <td style={{ textAlign: "center" }}>{c.CustomerID}</td>
+                <td style={{ textAlign: "center" }}>
+                  {(c.UtilisationPct || 0).toFixed(1)}%
+                </td>
+                <td style={{ textAlign: "center" }}>
+                  {(c.CashWithdrawalPct || 0).toFixed(1)}%
+                </td>
+                <td style={{ textAlign: "center" }}>{c.risk_band || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+/*─────────────────────────────────────────────
+  SMALL COMPONENTS
+─────────────────────────────────────────────*/
+function BarSegment({ flex, color }) {
+  if (!flex) return null;
+  return <div style={{ flex, background: color }} />;
+}
+
+function LegendPill({ color, label, value, total }) {
+  const pct = total ? ((value / total) * 100).toFixed(1) : 0;
+  return (
+    <div className="pill" style={{ display: "flex", gap: 4 }}>
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 999,
+          background: color,
+        }}
+      />
+      {label}: {value} ({pct}%)
+    </div>
+  );
+}
+
+function BehaviourRow({ label, value, hint }) {
+  return (
+    <div
+      style={{
+        padding: 10,
+        borderRadius: 12,
+        background: "linear-gradient(135deg,#f8fafc,#e2e8f0)",
+        border: "1px solid #cbd5e1",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <strong>{label}</strong>
+        <span>{value}</span>
+      </div>
+      <div style={{ fontSize: "0.75rem", opacity: 0.7 }}>{hint}</div>
+    </div>
   );
 }
