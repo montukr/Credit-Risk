@@ -14,18 +14,22 @@ export default function AdminDashboard() {
   // click outside closing
   const wrapperRef = useRef(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await api.get("/admin/customers");
-        setCustomers(res.data || []);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
+  // ⭐ NEW: RELOAD FUNCTION
+  const reload = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get("/admin/customers");
+      setCustomers(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
-    load();
+  };
+
+  // Load on first mount
+  useEffect(() => {
+    reload();
   }, []);
 
   // CLICK OUTSIDE HANDLER
@@ -66,7 +70,6 @@ export default function AdminDashboard() {
   const medium = customers.filter((c) => c.risk_band === "Medium").length;
   const low = customers.filter((c) => c.risk_band === "Low").length;
 
-  // flagged = only High (matches backend)
   const flagged = high;
 
   const avg = (f) =>
@@ -82,7 +85,20 @@ export default function AdminDashboard() {
 
   return (
     <Layout>
-      <h1>Portfolio overview</h1>
+      {/* ⭐ UPDATED HEADER WITH REFRESH BUTTON */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h1>Portfolio overview</h1>
+
+        <button
+          className="pill-btn"
+          onClick={reload}
+          disabled={loading}
+          style={{ padding: "6px 14px" }}
+        >
+          {loading ? "Refreshing…" : "Refresh"}
+        </button>
+      </div>
+
       <p className="page-caption">
         At-a-glance view of customer volumes, risk flags, and portfolio behaviour.
       </p>
@@ -153,7 +169,6 @@ export default function AdminDashboard() {
             <p className="muted">No customers yet.</p>
           ) : (
             <>
-              {/* 3-band distribution bar */}
               <div
                 style={{
                   display: "flex",
@@ -214,19 +229,9 @@ export default function AdminDashboard() {
 }
 
 /*─────────────────────────────────────────────
-  KPI CARD (EXPANDS IN PLACE)
+  KPI CARD
 ─────────────────────────────────────────────*/
-function KpiCard({
-  title,
-  subtitle,
-  value,
-  bg,
-  cardKey,
-  kind,
-  expandedCard,
-  toggle,
-  topData,
-}) {
+function KpiCard({ title, subtitle, value, bg, cardKey, kind, expandedCard, toggle, topData }) {
   const expanded = expandedCard === cardKey;
 
   return (
@@ -244,7 +249,6 @@ function KpiCard({
       }}
       onClick={(e) => expanded && e.stopPropagation()}
     >
-      {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <span style={{ fontWeight: 600 }}>{title}</span>
 
@@ -266,7 +270,6 @@ function KpiCard({
         </button>
       </div>
 
-      {/* VALUE */}
       <div style={{ fontSize: "2rem", marginTop: 4 }}>{value}</div>
       <div style={{ fontSize: "0.8rem", opacity: 0.9 }}>{subtitle}</div>
 
@@ -315,7 +318,7 @@ function ExpandedDetail({ title, list }) {
                 <td style={{ textAlign: "center" }}>
                   {(c.CashWithdrawalPct || 0).toFixed(1)}%
                 </td>
-                <td style={{ textAlign: "center" }}>{c.risk_band || "-"}</td>
+                <td style={{ textAlign: "center" }}>{c.risk_band}</td>
               </tr>
             ))}
           </tbody>
