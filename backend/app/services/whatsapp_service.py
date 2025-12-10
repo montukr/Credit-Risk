@@ -88,6 +88,28 @@ def send_hello_world(phone: str):
 # ===========================================================
 # 2️⃣ SEND WELCOME MESSAGE (1 variable)
 # ===========================================================
+# def send_welcome_message(phone: str, username: str):
+#     print("🚀 send_welcome_message CALLED —>", phone, username)
+
+#     template_name = TEMPLATE_WELCOME or TEMPLATE_HELLO
+
+#     if not phone:
+#         print("❌ No phone number provided.")
+#         return
+
+#     components = [
+#         {
+#             "type": "body",
+#             "parameters": [
+#                 {"type": "text", "text": username},
+#             ],
+#         }
+#     ]
+
+#     return _send_template(phone, template_name, components)
+
+
+# For now priority to the helo world template since others are not approved
 def send_welcome_message(phone: str, username: str):
     print("🚀 send_welcome_message CALLED —>", phone, username)
 
@@ -106,12 +128,41 @@ def send_welcome_message(phone: str, username: str):
         }
     ]
 
-    return _send_template(phone, template_name, components=None)
+    # If using hello_world → no components allowed
+    if template_name == "hello_world":
+        return _send_template(phone, template_name, components=None)
+
+    return _send_template(phone, template_name, components)
+
 
 
 # ===========================================================
 # 3️⃣ SEND HIGH-RISK ALERT (3 variables)
 # ===========================================================
+# def send_flagged_risk_message(phone: str, username: str, band: str, reason: str):
+#     print("🚨 send_flagged_risk_message CALLED —>", phone, username, band)
+
+#     template_name = TEMPLATE_FLAGGED or TEMPLATE_HELLO
+
+#     if not phone:
+#         print("❌ No phone number provided.")
+#         return
+
+#     components = [
+#         {
+#             "type": "body",
+#             "parameters": [
+#                 {"type": "text", "text": username},
+#                 {"type": "text", "text": band},
+#                 {"type": "text", "text": reason},
+#             ],
+#         }
+#     ]
+
+#     return _send_template(phone, template_name, components)
+
+
+# For now priority to the helo world template since others are not approved
 def send_flagged_risk_message(phone: str, username: str, band: str, reason: str):
     print("🚨 send_flagged_risk_message CALLED —>", phone, username, band)
 
@@ -132,4 +183,8 @@ def send_flagged_risk_message(phone: str, username: str, band: str, reason: str)
         }
     ]
 
-    return _send_template(phone, template_name, components=None)
+    # hello_world cannot accept variables → force no components
+    if template_name == "hello_world":
+        return _send_template(phone, template_name, components=None)
+
+    return _send_template(phone, template_name, components)
