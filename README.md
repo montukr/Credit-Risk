@@ -6,14 +6,14 @@ This project implements a **full-stack early risk detection platform** designed 
 
 It consists of:
 
-* 🧠 **ML Engine** — computes behavioural features and risk band predictions (L/M/H)
-* 🔐 **FastAPI Backend** — orchestrates scoring, authentication, and alert workflows
-* 🎨 **React Frontend** — modern user and admin dashboards
-* 🗄️ **MongoDB Database** — flexible NoSQL storage
-* 💬 **WhatsApp Business API** — OTP onboarding, welcome messages, and risk alerts
-* 🧮 **Rule Engine** — overrides or supplements ML insights with expert rules
+* 🧠 **ML Engine** — behavioural scoring + risk band prediction
+* 🔐 **FastAPI Backend** — authentication, ML inference, workflows
+* 🎨 **React Frontend** — dashboards for customers & admins
+* 🗄️ **MongoDB Database** — users, transactions, features, OTPs
+* 💬 **WhatsApp Business API** — OTP login & risk alerts
+* ⚖️ **Rule Engine** — deterministic overrides for critical scenarios
 
-This platform demonstrates how **real-time behavioural monitoring** can drastically improve early detection of financial stress and reduce credit losses.
+This platform demonstrates how **real-time behavioural monitoring** can significantly improve early detection of financial stress and reduce credit losses.
 
 ---
 
@@ -22,14 +22,15 @@ This platform demonstrates how **real-time behavioural monitoring** can drastica
 1. [Features](#-features)
 2. [System Architecture](#-system-architecture)
 3. [Machine Learning Engine Overview](#-machine-learning-engine-overview)
-4. [How the Model Predicts Risk Bands](#-how-the-risk-model-predicts-l--m--h)
+4. [How the Risk Model Predicts L / M / H](#-how-the-risk-model-predicts-l--m--h)
 5. [Tech Stack](#-tech-stack)
 6. [Repository Structure](#-repository-structure)
-7. [Backend Setup](#-backend-setup-local)
-8. [Frontend Setup](#-frontend-setup-local)
-9. [Docker + AWS Deployment Guide](#-docker--aws-deployment)
-10. [WhatsApp Integration](#-whatsapp-integration)
-11. [Future Enhancements](#-future-enhancements)
+7. [.env Configuration](#-env-configuration)
+8. [Backend Setup](#-backend-setup-local)
+9. [Frontend Setup](#-frontend-setup-local)
+10. [Docker + AWS Deployment](#-docker--aws-deployment)
+11. [WhatsApp Integration](#-whatsapp-integration)
+12. [Future Enhancements](#-future-enhancements)
 
 ---
 
@@ -37,37 +38,35 @@ This platform demonstrates how **real-time behavioural monitoring** can drastica
 
 ### 🔐 1. WhatsApp-Based Authentication
 
-* OTP-based signup (no passwords)
-* First-login welcome message
-* JWT authentication for secure sessions
+* OTP-based registration and login
+* Seamless onboarding
+* Automatic first-login welcome message
 
 ### 📉 2. Real-Time Early Risk Scoring
 
-* Behavioural aggregates updated per transaction
-* Ensemble ML scoring (LR + Decision Tree + Rules)
-* Risk band assignment: **Low / Medium / High**
-* SHAP explanations for model transparency
+* Behavioural aggregation per transaction
+* Ensemble ML scoring (Logistic Regression + Decision Tree)
+* Risk band: **Low / Medium / High**
+* SHAP explanations for transparency
 
 ### 📲 3. Automated WhatsApp Alerts
 
 * High-risk detection alerts
-* Admin-triggered customer alerts
-* WhatsApp template support
+* Admin-triggered warnings
+* Template-driven notifications
 
 ### 📊 4. Admin Dashboard
 
-* Portfolio risk distribution
-* View top high-risk accounts
-* Customer drilldown
-* Edit behavioural features
-* Transaction histories
-* One-click WhatsApp warning button
+* Portfolio-level risk distribution
+* Top high-risk customers
+* Customer transaction/risk history
+* Trigger alerts instantly
 
-### 👤 5. User Dashboard
+### 👤 5. Customer Dashboard
 
-* View credit usage and risk status
-* Get alerts in WhatsApp
-* Add transactions (demo mode)
+* Credit usage summary
+* Risk band overview
+* Real-time alerts via WhatsApp
 
 ---
 
@@ -75,14 +74,14 @@ This platform demonstrates how **real-time behavioural monitoring** can drastica
 
 ```
 Frontend (React)
-    ↑            ↓
-    └──JWT────→ FastAPI Backend
-                     ↓
-             ML Risk Engine (LR + Tree + Rules)
-                     ↓
-                 MongoDB
-                     ↓
-            WhatsApp Business API
+        ↑    ↓
+        └ JWT ────→  FastAPI Backend
+                          ↓
+                   ML Risk Engine
+                          ↓
+                       MongoDB
+                          ↓
+             WhatsApp Business API
 ```
 
 **Key components:**
@@ -95,123 +94,58 @@ Frontend (React)
 
 ---
 
-# 🧠 Machine Learning Engine Overview
+# 🧠 Machine Learning Engine Overview (Short Version)
 
-The ML engine combines **statistical modeling**, **supervised learning**, and **business rules** to detect emerging credit stress.
+The ML engine computes early risk signals by processing **behavioural features** derived from customer transactions.
 
-### 📂 1. Input Behavioural Features
+### Key input features include:
 
-Examples:
+* **UtilisationPct**
+* **CashWithdrawalPct**
+* **RecentSpendChangePct**
+* **MerchantMixIndex**
+* **PaymentRatio**, **MinDueFrequency**
 
-| Feature              | Description                              |
-| -------------------- | ---------------------------------------- |
-| UtilisationPct       | How much of credit limit is used         |
-| MerchantMixIndex     | Diversity of merchants spent at          |
-| CashWithdrawalPct    | Share of cash withdrawals (high → risky) |
-| RecentSpendChangePct | Sudden increase in spending              |
-| MinDuePaidFrequency  | Frequency of only paying minimum amounts |
-| AvgPaymentRatio      | Repayment behavior                       |
+Every transaction updates these aggregates, triggering re-scoring when thresholds change.
 
-Features are recomputed whenever a new transaction enters the system.
+The ML engine consists of:
 
----
-
-# 🎛️ How the Risk Model Predicts L / M / H
-
-The platform uses a **three-stage ML pipeline**:
+1. **Logistic Regression Model** (probability-based, interpretable)
+2. **Decision Tree Classifier** (nonlinear pattern detection)
+3. **Rule Engine** (hard overrides such as ≥95% utilisation or >40% cash usage)
 
 ---
 
-## **Stage 1 — Logistic Regression Model**
+# 🎛️ How the Risk Model Predicts L / M / H (Short Version)
 
-A trained Scikit-Learn logistic regression model outputs:
-
-* `ml_probability` → estimated delinquency probability
-* Uses standardised behavioural features
-* Advantages: Explainable weights, fast inference
-
-Example output:
-`0.78` = 78% risk (High)
-
----
-
-## **Stage 2 — Decision Tree Model**
-
-A lightweight decision tree captures **nonlinear interactions** the LR model may miss.
-
-Example rule:
+1. **Logistic Regression** produces a baseline delinquency probability.
+2. **Decision Tree** identifies non-linear high-risk cases (spend spikes, cash patterns).
+3. **Rule Engine** enforces deterministic red flags (e.g., 3+ minimum payments → High).
+4. Final score is averaged and adjusted:
 
 ```
-IF UtilisationPct > 85% AND RecentSpendChangePct > 40%
-   THEN High Risk
-```
-
-The tree outputs a probability or class.
-
----
-
-## **Stage 3 — Rule Engine Overrides**
-
-Some patterns must always trigger elevation:
-
-| Rule                            | Reason                              |
-| ------------------------------- | ----------------------------------- |
-| CashWithdrawalPct > 40%         | Sign of liquidity crisis            |
-| 3+ consecutive minimum payments | High distress risk                  |
-| Utilisation ≥ 95%               | Maxed-out card → likely delinquency |
-
-Rules apply deterministic overrides such as:
-
-```
-IF rule flags "critical" → set risk_band = High
-```
-
----
-
-## 📘 Final Band Assignment
-
-```
-IF ensemble_probability < 0.33 → LOW
-IF ensemble_probability < 0.66 → MEDIUM
+IF score < 0.33 → LOW
+IF score < 0.66 → MEDIUM
 ELSE → HIGH
 ```
 
-This combines:
-
-```
-ensemble = (LR + Tree) / 2 ± Rule Adjustments
-```
-
-Every score is logged into `risk_scores` for audit and tracking.
+This ensures **explainability + sensitivity to risky behaviour**.
 
 ---
 
 # 💻 Tech Stack
 
-### **Backend**
+### Backend
 
-* FastAPI
-* Python 3.11
-* MongoDB (PyMongo)
-* Scikit-learn
-* SHAP explainers
-* Pydantic v2
-* Uvicorn
-* WhatsApp Cloud API
+FastAPI · Python 3.11 · MongoDB · Scikit-Learn · SHAP · Pydantic v2 · WhatsApp Cloud API
 
-### **Frontend**
+### Frontend
 
-* React + Vite
-* Axios
-* Context API for auth
-* Custom component library
+React · Vite · Axios · Context API
 
-### **Infrastructure**
+### Infrastructure
 
-* Docker
-* AWS EC2
-* AWS ECR
-* NGINX (frontend hosting)
+Docker · AWS EC2 · AWS ECR · NGINX
 
 ---
 
@@ -220,23 +154,67 @@ Every score is logged into `risk_scores` for audit and tracking.
 ```
 backend/
   app/
-    core/        # config, db, security
-    routers/     # auth, admin, risk, whatsapp
-    services/    # ML service, whatsapp service
-    ml/          # ML models & pipelines
-    models/      # Mongo models
+    core/
+    routers/
+    services/
+    ml/
+    models/
     schemas/
     main.py
-  artifacts/     # .pkl, .pt, SHAP, scaler files
+  artifacts/
   Dockerfile
-
 frontend/
-  src/           # Pages, components, auth context
+  src/
   public/
   Dockerfile
-
 environment_backend.yml
 README.md
+```
+
+---
+
+# 🔐 .env Configuration
+
+## 1. Backend — `.env.example`
+
+Create:
+
+```
+backend/.env.example
+```
+
+```env
+# ==== App ====
+APP_NAME="Credit Risk Platform"
+
+# ==== MongoDB ====
+MONGODB_URI="mongodb://localhost:27017"
+MONGODB_DB="credit_risk"
+
+# ==== JWT ====
+JWT_SECRET_KEY="CHANGE_ME"
+JWT_ALGORITHM="HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+# ==== Artifacts ====
+ARTIFACTS_DIR="artifacts"
+
+# ==== WhatsApp API ====
+WHATSAPP_TOKEN=""
+WHATSAPP_PHONE_ID=""
+WHATSAPP_API_VERSION="v21.0"
+
+WHATSAPP_TEMPLATE_WELCOME=""
+WHATSAPP_TEMPLATE_FLAGGED=""
+```
+
+---
+
+## 2. Frontend — `.env.example`
+
+```
+VITE_API_BASE_URL="http://localhost:8000"
+VITE_API_URL="http://<BACKEND_ELASTIC_IP>:8000"
 ```
 
 ---
@@ -262,44 +240,51 @@ npm run dev
 
 ---
 
-# 🐳 Docker & AWS Deployment
+# 🐳 Docker + AWS Deployment
 
-## 1. Login to AWS ECR
+## 1. Authenticate with ECR
 
 ```bash
 aws ecr get-login-password --region ap-south-1 \
 | docker login --username AWS --password-stdin 077540773844.dkr.ecr.ap-south-1.amazonaws.com
 ```
 
-## 2. Build Images
+---
+
+## 2. Build images
 
 ```bash
 docker build -t montukr/credit-card-risk-backend ./backend
 docker build -t montukr/credit-card-risk-frontend ./frontend
 ```
 
-## 3. Tag and Push
+---
+
+## 3. Tag & Push (Backend)
 
 ```bash
 docker tag montukr/credit-card-risk-backend:latest \
 077540773844.dkr.ecr.ap-south-1.amazonaws.com/montukr/credit-card-risk-backend:latest
 
-docker push 077540773844.dkr.ecr.ap-south-1.amazonaws.com/montukr/credit-card-risk-backend:latest
+docker push \
+077540773844.dkr.ecr.ap-south-1.amazonaws.com/montukr/credit-card-risk-backend:latest
 ```
 
-Same for frontend.
+Repeat for frontend.
 
-## 4. Run on EC2
+---
 
-Backend:
+## 4. Run Containers on EC2
+
+### Backend
 
 ```bash
 docker run -d -p 8000:8000 \
---env-file .env \
+--env-file /home/ubuntu/backend.env \
 montukr/credit-card-risk-backend
 ```
 
-Frontend (NGINX):
+### Frontend (NGINX)
 
 ```bash
 docker run -d -p 80:80 montukr/credit-card-risk-frontend
@@ -309,29 +294,21 @@ docker run -d -p 80:80 montukr/credit-card-risk-frontend
 
 # 💬 WhatsApp Integration
 
-### Supports:
+Supports:
 
-* OTP for login
-* Welcome messages
-* Automated risk alerts
+* OTP onboarding
+* Welcome messages at first login
+* Automatic High-Risk alerts
 * Admin-triggered alerts
 
-Requires approved templates like:
-
-```
-welcome_user
-risk_high_alert
-```
+Templates must be approved in Meta WhatsApp Cloud API dashboard.
 
 ---
 
 # 🔭 Future Enhancements
 
-* Multi-language WhatsApp templates
-* Integration with credit bureaus
-* Real-time streaming via Kafka
-* Gradient Boosting or XGBoost risk models
-* Dashboard analytics using Apache Superset
-* Automated repayment plan recommendations
-
----
+* Multi-language templates
+* Integration with bureaus / alternate data sources
+* Gradient boosting / deep models
+* Kafka-based streaming
+* Personalized repayment suggestions
