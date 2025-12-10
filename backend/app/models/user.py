@@ -57,3 +57,22 @@ def update_last_login(db, username: str):
         {"username": username},
         {"$set": {"last_login": datetime.utcnow()}},
     )
+
+
+def get_user_by_phone(db, phone: str):
+    return user_collection(db).find_one({"phone": phone})
+
+
+def create_user_with_phone(db, username: str, phone: str, role="user"):
+    doc = {
+        "username": username,
+        "email": None,
+        "hashed_password": None,
+        "phone": phone,
+        "role": role,
+        "created_at": datetime.utcnow(),
+        "last_login": None,
+    }
+    res = user_collection(db).insert_one(doc)
+    doc["_id"] = res.inserted_id
+    return doc

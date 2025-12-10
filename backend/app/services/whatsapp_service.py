@@ -188,3 +188,27 @@ def send_flagged_risk_message(phone: str, username: str, band: str, reason: str)
         return _send_template(phone, template_name, components=None)
 
     return _send_template(phone, template_name, components)
+
+def send_otp_message(phone: str, code: str):
+    text = f"Your verification code is {code}. It is valid for 5 minutes."
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": phone,
+        "type": "text",
+        "text": {"body": text},
+    }
+
+    url = f"{BASE_URL}/{WHATSAPP_PHONE_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    print("➡ Sending OTP:", payload)
+
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        print("📨 WhatsApp OTP response:", response.text)
+    except Exception as e:
+        print("❌ Error sending OTP:", e)
