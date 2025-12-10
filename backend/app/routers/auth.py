@@ -7,7 +7,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/register", response_model=TokenResponse)
 def register(payload: RegisterRequest, db=Depends(get_db)):
-    user = register_user(db, payload.username, payload.email, payload.password)
+    user = register_user(db, payload.username, payload.email, payload.password, payload.phone)
     token, _ = login_user(db, payload.username, payload.password)
     return TokenResponse(
         access_token=token,
