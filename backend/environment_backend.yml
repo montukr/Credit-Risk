@@ -1,6 +1,5 @@
 # name: credit-risk
 # channels:
-#   - conda-forge
 #   - defaults
 # dependencies:
 #   - brotlicffi=1.2.0.0=py311h50f4ffc_0
@@ -92,88 +91,49 @@
 name: credit-risk
 channels:
   - conda-forge
-  - defaults
-
 dependencies:
-  # Core Python + tooling
   - python=3.11
   - pip
-  - ca-certificates
-  - certifi
-  - openssl
-  - libffi
-  - zlib
-  - bzip2
-  - xz
-  - ncurses
-  - readline
-  - sqlite
-  - tk
-  - charset-normalizer
-  - idna
-  - pysocks
-  - requests
-  - setuptools
-  - urllib3
-  - wheel
-
-  # If you want Brotli, use generic brotli (not mac-arm specific brotlicffi)
-  - brotli
-
+  # Core Data Science libraries (best via Conda)
+  - numpy
+  - pandas
+  - scikit-learn
+  - scipy
+  # PIP Dependencies
   - pip:
-      - annotated-doc==0.0.4
-      - annotated-types==0.7.0
-      - anyio==4.12.0
-      - bcrypt==4.0.1
-      - click==8.3.1
-      - cloudpickle==3.1.2
-      - cryptography==46.0.3
-      - dnspython==2.8.0
-      - ecdsa==0.19.1
-      - email-validator==2.3.0
-      - fastapi==0.123.10
-      - filelock==3.20.0
-      - fsspec==2025.12.0
-      - h11==0.16.0
-      - httptools==0.7.1
-      - jinja2==3.1.6
-      - joblib==1.5.2
-      - llvmlite==0.45.1
-      - markupsafe==3.0.3
-      - mpmath==1.3.0
-      - networkx==3.6
-      - numba==0.62.1
-      - numpy==2.3.5
-      - packaging==25.0
-      - pandas==2.3.3
-      - passlib==1.7.4
-      - pyasn1==0.6.1
-      - pydantic==2.12.5
-      - pydantic-core==2.41.5
-      - pydantic-settings==2.12.0
-      - pymongo==4.15.5
-      - python-dateutil==2.9.0.post0
-      - python-dotenv==1.2.1
-      # 🔴 DO NOT put python-jose here – Dockerfile handles it.
-
-      - python-multipart==0.0.20
-      - pytz==2025.2
-      - pyyaml==6.0.3
-      - rsa==4.9.1
-      - scikit-learn==1.7.2
-      - scipy==1.16.3
-      - shap==0.50.0
-      - six==1.17.0
-      - slicer==0.0.8
-      - starlette==0.50.0
-      - sympy==1.14.0
-      - threadpoolctl==3.6.0
-      - torch==2.9.1
-      - tqdm==4.67.1
-      - typing-extensions==4.15.0
-      - typing-inspection==0.4.2
-      - tzdata==2025.2
-      - uvicorn==0.38.0
-      - uvloop==0.22.1
-      - watchfiles==1.1.1
-      - websockets==15.0.1
+    # --- Frameworks ---
+    - fastapi
+    - uvicorn
+    - starlette
+    - python-multipart
+    - python-dotenv
+    
+    # --- Security & Auth ---
+    - python-jose[cryptography]
+    - passlib
+    # CRITICAL: Pin bcrypt to 3.2.2 to avoid conflicts with passlib
+    - bcrypt==3.2.2
+    
+    # --- Database ---
+    - pymongo
+    
+    # --- Utilities ---
+    - requests
+    - jinja2
+    - pyyaml
+    - python-dateutil
+    - pydantic
+    - pydantic-settings
+    - typing-extensions
+    - tqdm
+    
+    # --- AI/ML ---
+    - shap
+    - torch 
+    
+    # --- Network/Async ---
+    - anyio
+    - websockets
+    - httptools
+    - dnspython
+    - email-validator
