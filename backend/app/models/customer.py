@@ -20,6 +20,10 @@ def ensure_customer_for_user(db, user):
     Ensure there is exactly one customer doc for a logged-in end user.
     Only called from user-facing routes, not admin routes.
     """
+    # 🔴 Do not create customer docs for admins
+    if user.get("username") == "admin":
+        return None
+
     col = customers_col(db)
     existing = col.find_one({"user_id": str(user["_id"]), "source": "app_user"})
     if existing:
