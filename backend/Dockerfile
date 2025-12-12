@@ -1,5 +1,4 @@
 # backend/Dockerfile
-
 FROM continuumio/miniconda3:latest
 
 # Set working directory
@@ -8,7 +7,7 @@ WORKDIR /app
 # Copy environment file
 COPY environment_backend.yml /tmp/environment_backend.yml
 
-# Create conda environment (ARM64 compatible)
+# Create conda environment
 RUN conda env create -f /tmp/environment_backend.yml && \
     conda clean -afy
 

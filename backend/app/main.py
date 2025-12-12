@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import settings
 from app.routers import auth, user, admin
 from app.routers import risk  # new ML / risk API
 from app.routers.auth_whatsapp import router as whatsapp_auth_router
@@ -8,10 +9,14 @@ from app.routers.auth_whatsapp import router as whatsapp_auth_router
 
 app = FastAPI(title="Early Risk Signals - Credit Card Delinquency")
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+# CORS origins: from env if set, else default to local dev URLs
+if settings.CORS_ORIGINS:
+    origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
 
 app.add_middleware(
     CORSMiddleware,

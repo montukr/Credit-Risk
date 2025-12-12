@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
@@ -10,7 +11,7 @@ class Settings(BaseSettings):
 
     # Database
     MONGODB_URI: str = "mongodb://localhost:27017"
-    MONGODB_DB: str = "credit_risk_db"
+    MONGODB_DB: str = "credit_risk"
 
     # JWT
     JWT_SECRET_KEY: str = "change_this_to_a_long_random_secret"
@@ -26,6 +27,9 @@ class Settings(BaseSettings):
     WHATSAPP_API_VERSION: str = "v21.0"
     WHATSAPP_TEMPLATE_WELCOME: str | None = None
     WHATSAPP_TEMPLATE_FLAGGED: str | None = None
+
+    # ⭐ CORS origins (comma-separated URLs, e.g. "http://localhost:5173,http://frontend-ip")
+    CORS_ORIGINS: str | None = None
 
     class Config:
         env_file = ".env"
