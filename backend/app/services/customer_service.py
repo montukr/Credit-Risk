@@ -67,6 +67,7 @@ def handle_add_transaction(db, current_user, tx):
     # 6) Insert transaction
     tx_doc = {
         "customer_id": cust_id,
+        "username": customer.get("username"),  # ← new field
         "amount": tx_amount,
         "category": category,
         "description": tx.description,
@@ -88,7 +89,8 @@ def handle_add_transaction(db, current_user, tx):
     risk_scores_col(db).insert_one(
         {
             "customer_id": cust_id,
-            "username": admin_username,
+            # "username": admin_username,
+            "username": customer.get("username"),
             "ml_probability": risk["ml_probability"],
             "ensemble_probability": risk["ensemble_probability"],
             "risk_band": risk["risk_band"],
@@ -191,6 +193,8 @@ def _update_customer_aggregates(db, customer):
 # BALANCE / AVAILABLE CREDIT HELPER
 # -----------------------------------------------------------
 def _get_balance_and_available(db, customer):
+    if customer is None:
+        return 0.0, 0.0, 0.0
     transactions = db["transactions"]
     cust_id = str(customer["_id"])
     txs = list(transactions.find({"customer_id": cust_id}))
@@ -205,6 +209,9 @@ def _get_balance_and_available(db, customer):
 # -----------------------------------------------------------
 def get_user_transactions(db, current_user):
     customer = ensure_customer_for_user(db, current_user)
+    # If no customer (e.g., admin or user never had a customer created), return empty
+    if customer is None:
+        return [], None
     balance, available, credit_limit = _get_balance_and_available(db, customer)
 
     customer["current_balance"] = balance

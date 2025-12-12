@@ -7,8 +7,7 @@ from ..models.user import create_user, get_user_by_username, update_last_login
 
 # WhatsApp senders
 from app.services.whatsapp_service import (
-    send_welcome_message,
-    send_hello_world
+    send_welcome_message
 )
 
 
@@ -64,9 +63,11 @@ def login_user(db, username: str, password: str):
     # Detect true FIRST LOGIN
     is_first_login = user.get("last_login") is None
     phone = user.get("phone")
+    role = user.get("role")
 
     print("🔍 First login?", is_first_login)
     print("📞 User phone:", phone)
+    print("👤 User role:", role)
 
     # Update last_login NOW
     update_last_login(db, username)
@@ -74,21 +75,19 @@ def login_user(db, username: str, password: str):
     # -----------------------------------------------------
     # WHATSAPP LOGIC
     # -----------------------------------------------------
-    if phone:
+    # Do not send any WhatsApp messages for admins
+    if role != "admin" and phone:
         if is_first_login:
             # First REAL login — send welcome + hello_world
             print("🔥 Sending WhatsApp WELCOME template (first login)…")
             send_welcome_message(phone, username)
 
-            print("🔥 Sending WhatsApp HELLO_WORLD template (first login)…")
-            send_hello_world(phone)
-
         else:
             # All other logins → send only hello_world
             print("ℹ Not first login — sending HELLO_WORLD only.")
-            send_hello_world(phone)
+            send_welcome_message(phone, username)
     else:
-        print("⚠ No phone number stored — skipping WhatsApp sends.")
+        print("ℹ Skipping WhatsApp sends for admin or missing phone.")
     # -----------------------------------------------------
 
     token = create_access_token(subject=username, role=user["role"])

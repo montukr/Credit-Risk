@@ -7,11 +7,9 @@ WHATSAPP_PHONE_ID = settings.WHATSAPP_PHONE_ID
 WHATSAPP_API_VERSION = settings.WHATSAPP_API_VERSION or "v21.0"
 
 # Your templates
-TEMPLATE_WELCOME = settings.WHATSAPP_TEMPLATE_WELCOME            # user_welcome_alert
-TEMPLATE_FLAGGED = settings.WHATSAPP_TEMPLATE_FLAGGED            # risk_high_alert
+TEMPLATE_WELCOME = settings.WHATSAPP_TEMPLATE_WELCOME            # welcome_user_alert
+TEMPLATE_FLAGGED = settings.WHATSAPP_TEMPLATE_FLAGGED            # flagged_risk_alert
 
-# Temporary – WhatsApp default template
-TEMPLATE_HELLO = "hello_world"  
 
 BASE_URL = f"https://graph.facebook.com/{WHATSAPP_API_VERSION}"
 
@@ -53,7 +51,7 @@ def _send_template(to_phone: str, template_name: str, components=None):
         "type": "template",
         "template": {
             "name": template_name,
-            "language": {"code": "en_US"},
+            "language": {"code": "en"},
         },
     }
 
@@ -73,47 +71,16 @@ def _send_template(to_phone: str, template_name: str, components=None):
 
 
 # ===========================================================
-# 1️⃣ SEND DEFAULT "HELLO WORLD" TEMPLATE (0 variables)
-# ===========================================================
-def send_hello_world(phone: str):
-    print("🚀 send_hello_world CALLED →", phone)
-
-    return _send_template(
-        phone,
-        TEMPLATE_HELLO,
-        components=None    # hello_world takes **zero** variables
-    )
-
-
-# ===========================================================
 # 2️⃣ SEND WELCOME MESSAGE (1 variable)
 # ===========================================================
-# def send_welcome_message(phone: str, username: str):
-#     print("🚀 send_welcome_message CALLED —>", phone, username)
-
-#     template_name = TEMPLATE_WELCOME or TEMPLATE_HELLO
-
-#     if not phone:
-#         print("❌ No phone number provided.")
-#         return
-
-#     components = [
-#         {
-#             "type": "body",
-#             "parameters": [
-#                 {"type": "text", "text": username},
-#             ],
-#         }
-#     ]
-
-#     return _send_template(phone, template_name, components)
-
-
-# For now priority to the helo world template since others are not approved
 def send_welcome_message(phone: str, username: str):
     print("🚀 send_welcome_message CALLED —>", phone, username)
 
-    template_name = TEMPLATE_WELCOME or TEMPLATE_HELLO
+    template_name = TEMPLATE_WELCOME
+
+    if not template_name:
+        print("❌ WHATSAPP_TEMPLATE_WELCOME not set — skipping.")
+        return
 
     if not phone:
         print("❌ No phone number provided.")
@@ -128,9 +95,6 @@ def send_welcome_message(phone: str, username: str):
         }
     ]
 
-    # If using hello_world → no components allowed
-    if template_name == "hello_world":
-        return _send_template(phone, template_name, components=None)
 
     return _send_template(phone, template_name, components)
 
@@ -139,34 +103,14 @@ def send_welcome_message(phone: str, username: str):
 # ===========================================================
 # 3️⃣ SEND HIGH-RISK ALERT (3 variables)
 # ===========================================================
-# def send_flagged_risk_message(phone: str, username: str, band: str, reason: str):
-#     print("🚨 send_flagged_risk_message CALLED —>", phone, username, band)
-
-#     template_name = TEMPLATE_FLAGGED or TEMPLATE_HELLO
-
-#     if not phone:
-#         print("❌ No phone number provided.")
-#         return
-
-#     components = [
-#         {
-#             "type": "body",
-#             "parameters": [
-#                 {"type": "text", "text": username},
-#                 {"type": "text", "text": band},
-#                 {"type": "text", "text": reason},
-#             ],
-#         }
-#     ]
-
-#     return _send_template(phone, template_name, components)
-
-
-# For now priority to the helo world template since others are not approved
 def send_flagged_risk_message(phone: str, username: str, band: str, reason: str):
     print("🚨 send_flagged_risk_message CALLED —>", phone, username, band)
 
-    template_name = TEMPLATE_FLAGGED or TEMPLATE_HELLO
+    template_name = TEMPLATE_FLAGGED
+
+    if not template_name:
+        print("❌ WHATSAPP_TEMPLATE_FLAGGED not set — skipping.")
+        return
 
     if not phone:
         print("❌ No phone number provided.")
@@ -182,10 +126,6 @@ def send_flagged_risk_message(phone: str, username: str, band: str, reason: str)
             ],
         }
     ]
-
-    # hello_world cannot accept variables → force no components
-    if template_name == "hello_world":
-        return _send_template(phone, template_name, components=None)
 
     return _send_template(phone, template_name, components)
 

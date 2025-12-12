@@ -114,7 +114,8 @@ def admin_update_features(
     risk_scores_col(db).insert_one(
         {
             "customer_id": str(customer["_id"]),
-            "username": current_admin["username"],
+            # "username": current_admin["username"],
+            "username": customer.get("username"),
             "ml_probability": risk["ml_probability"],
             "ensemble_probability": risk["ensemble_probability"],
             "risk_band": risk["risk_band"],
