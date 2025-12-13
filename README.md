@@ -2,6 +2,17 @@
 
 *A Machine-Learning–Driven Early Warning System with Real-Time Behavioral Analytics & WhatsApp-Based Interventions*
 
+## 🔗 Live Demo
+
+Web app (Frontend): http://13.205.19.249/
+ 
+Backend API: http://13.200.50.168:8000/docs
+
+Test Username / Password:  
+- Admin: admin / 1234  
+- User 1: test1 / 1234
+- User 2: test2 / 1234
+
 This project implements a **full-stack early risk detection platform** designed to identify **emerging credit card delinquency signals** using a combination of behavioral analytics, machine learning, and automated WhatsApp-based communication.
 
 It consists of:
