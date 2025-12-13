@@ -11,7 +11,8 @@ app = FastAPI(title="Early Risk Signals - Credit Card Delinquency")
 
 # CORS origins: from env if set, else default to local dev URLs
 if settings.CORS_ORIGINS:
-    origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+    # origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+    origins = settings.CORS_ORIGINS
 else:
     origins = [
         "http://localhost:5173",
