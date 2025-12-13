@@ -94,12 +94,10 @@ channels:
 dependencies:
   - python=3.11
   - pip
-  # Core Data Science libraries (best via Conda)
   - numpy
   - pandas
   - scikit-learn
   - scipy
-  # PIP Dependencies
   - pip:
     # --- Frameworks ---
     - fastapi
@@ -109,9 +107,9 @@ dependencies:
     - python-dotenv
     
     # --- Security & Auth ---
-    - python-jose[cryptography]
+    # ✅ FIX 1: Use the Pip version (like Mac) but ADD QUOTES.
+    - "python-jose[cryptography]"
     - passlib
-    # CRITICAL: Pin bcrypt to 3.2.2 to avoid conflicts with passlib
     - bcrypt==3.2.2
     
     # --- Database ---
