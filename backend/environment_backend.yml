@@ -87,7 +87,7 @@
 #       - websockets==15.0.1
 # prefix: /opt/miniconda3/envs/credit-risk
 
-
+# Works with mac, linux and linux based (x86, ARM) dockers
 name: credit-risk
 channels:
   - conda-forge
