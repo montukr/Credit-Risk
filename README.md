@@ -13,6 +13,7 @@ Test Username / Password:
 - User 1: test1 / 1234
 - User 2: test2 / 1234
 
+
 This project implements a **full-stack early risk detection platform** designed to identify **emerging credit card delinquency signals** using a combination of behavioral analytics, machine learning, and automated WhatsApp-based communication.
 
 It consists of:
